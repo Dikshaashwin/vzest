@@ -1,5 +1,5 @@
 import { IndianRupee, ShoppingCart, Clock, AlertTriangle, XCircle, Users } from "lucide-react";
-import { getDashboardStats, getRecentOrders, getTopProducts } from "@/lib/actions/dashboard";
+import { getDashboardData } from "@/lib/actions/dashboard";
 import { safe } from "@/lib/safe";
 import { StatCard } from "@/components/admin/StatCard";
 import { formatDate, formatINR } from "@/lib/format";
@@ -7,21 +7,21 @@ import Link from "next/link";
 
 export const metadata = { title: "Admin Dashboard" };
 
-const EMPTY_STATS = {
-  todayRevenue: 0,
-  todayOrders: 0,
-  pendingOrders: 0,
-  lowStockCount: 0,
-  outOfStockCount: 0,
-  totalCustomers: 0,
+const EMPTY_DATA = {
+  stats: {
+    todayRevenue: 0,
+    todayOrders: 0,
+    pendingOrders: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+    totalCustomers: 0,
+  },
+  recentOrders: [],
+  topProducts: [],
 };
 
 export default async function AdminDashboardPage() {
-  const [stats, recentOrders, topProducts] = await Promise.all([
-    safe(() => getDashboardStats(), EMPTY_STATS),
-    safe(() => getRecentOrders(), []),
-    safe(() => getTopProducts(), []),
-  ]);
+  const { stats, recentOrders, topProducts } = await safe(() => getDashboardData(), EMPTY_DATA);
 
   return (
     <div>

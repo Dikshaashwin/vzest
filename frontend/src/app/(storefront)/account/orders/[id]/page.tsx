@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { auth } from "@/auth";
 import { getOrderById } from "@/lib/actions/orders";
 import { formatDate, formatINR } from "@/lib/format";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -7,9 +6,9 @@ import { ORDER_STATUS_TONE } from "@/lib/status-tone";
 
 export default async function AccountOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [session, order] = await Promise.all([auth(), getOrderById(id)]);
+  const order = await getOrderById(id);
 
-  if (!order || order.userId !== session?.user?.id) notFound();
+  if (!order) notFound();
 
   return (
     <div>
@@ -43,16 +42,14 @@ export default async function AccountOrderDetailPage({ params }: { params: Promi
         </div>
 
         <div className="space-y-4">
-          {order.address && (
-            <div className="rounded-2xl border border-cocoa-100 p-5">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-cocoa-600">Shipping Address</p>
-              <div className="mt-2 space-y-0.5 text-sm text-cocoa-600">
-                <p>{order.address.fullName}</p>
-                <p>{order.address.line1}</p>
-                <p>{order.address.city}, {order.address.state} {order.address.pincode}</p>
-              </div>
+          <div className="rounded-2xl border border-cocoa-100 p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-cocoa-600">Shipping Address</p>
+            <div className="mt-2 space-y-0.5 text-sm text-cocoa-600">
+              <p>{order.shippingFullName}</p>
+              <p>{order.shippingLine1}</p>
+              <p>{order.shippingCity}, {order.shippingState} {order.shippingPincode}</p>
             </div>
-          )}
+          </div>
           {order.shipment?.awbCode && (
             <div className="rounded-2xl border border-cocoa-100 p-5">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-cocoa-600">Tracking</p>

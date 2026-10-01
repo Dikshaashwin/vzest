@@ -1,32 +1,38 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { apiServer, ApiRequestError } from "@/lib/api/server";
+import type { Address, Order } from "@/lib/api/types";
+
+export type CustomerListItem = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string | null;
+  createdAt: string;
+  orderCount: number;
+  totalSpent: string;
+  lastOrderAt: string | null;
+};
+
+export type CustomerDetail = {
+  id: string;
+  name: string | null;
+  email: string;
+  phone: string | null;
+  createdAt: string;
+  addresses: Address[];
+  orders: Order[];
+};
 
 export async function listCustomers() {
-  const customers = await prisma.user.findMany({
-    where: { role: "CUSTOMER" },
-    include: { orders: { select: { total: true, createdAt: true } } },
-    orderBy: { createdAt: "desc" },
-  });
-
-  return customers.map((c) => ({
-    id: c.id,
-    name: c.name ?? "—",
-    email: c.email,
-    phone: c.phone,
-    createdAt: c.createdAt,
-    orderCount: c.orders.length,
-    totalSpent: c.orders.reduce((sum, o) => sum + Number(o.total), 0),
-    lastOrderAt: c.orders.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0]?.createdAt,
-  }));
+  return apiServer.get<CustomerListItem[]>("/admin/customers");
 }
 
 export async function getCustomerById(id: string) {
-  return prisma.user.findUnique({
-    where: { id },
-    include: {
-      addresses: true,
-      orders: { include: { items: true }, orderBy: { createdAt: "desc" } },
-    },
-  });
+  try {
+    return await apiServer.get<CustomerDetail>(`/admin/customers/${id}`);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) return null;
+    throw err;
+  }
 }

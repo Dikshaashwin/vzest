@@ -1,21 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
-import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
+import { getWishlist } from "@/lib/actions/wishlist";
 import { formatINR } from "@/lib/format";
 import { RemoveWishlistButton } from "@/components/storefront/RemoveWishlistButton";
 
 export const metadata = { title: "My Wishlist" };
 
 export default async function WishlistPage() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
-
-  const items = await prisma.wishlistItem.findMany({
-    where: { userId: session.user.id },
-    include: { product: { include: { images: { take: 1, orderBy: { position: "asc" } }, variants: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const items = await getWishlist();
 
   return (
     <div>

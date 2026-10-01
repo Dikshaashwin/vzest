@@ -13,7 +13,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Radio } from "@/components/ui/Radio";
 import { CheckoutStepper } from "@/components/storefront/CheckoutStepper";
-import type { Address } from "@prisma/client";
+import { apiBrowser, ApiRequestError } from "@/lib/api/browser";
+import type { Address } from "@/lib/api/types";
 
 const SHIPPING_FLAT_FEE = 80;
 const FREE_SHIPPING_THRESHOLD = 999;
@@ -109,19 +110,23 @@ export function CheckoutFlow({
           : null;
       if (!address) throw new Error("Shipping address is missing.");
 
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...contact,
-          couponCode: coupon?.code,
-          shippingMethod,
-          address,
-          items: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity })),
-        }),
+      const data = await apiBrowser.post<{
+        orderId: string;
+        orderNumber: string;
+        razorpayOrderId: string | null;
+        amount: number;
+        currency: string;
+        keyId: string | null;
+      }>("/checkout", {
+        ...contact,
+        couponCode: coupon?.code,
+        shippingMethod,
+        address,
+        items: lines.map((l) => ({ productId: l.productId, variantId: l.variantId, quantity: l.quantity })),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Checkout failed.");
+
+      const successUrl = `/checkout/success?order=${data.orderNumber}&email=${encodeURIComponent(contact.customerEmail)}`;
+      const failedUrl = `/checkout/failed?order=${data.orderNumber}`;
 
       if (!data.keyId) {
         setError("Payment gateway is not configured yet. Order was saved as pending — an admin needs to set Razorpay keys.");
@@ -134,28 +139,24 @@ export function CheckoutFlow({
         currency: data.currency,
         name: "Zest",
         description: `Order ${data.orderNumber}`,
-        order_id: data.razorpayOrderId,
+        order_id: data.razorpayOrderId ?? undefined,
         prefill: { name: contact.customerName, email: contact.customerEmail, contact: contact.customerPhone },
         handler: async (response: unknown) => {
           const r = response as { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
-          const verifyRes = await fetch("/api/checkout/verify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ orderId: data.orderId, ...r }),
-          });
-          if (verifyRes.ok) {
+          try {
+            await apiBrowser.post("/checkout/verify", { orderId: data.orderId, ...r });
             clear();
-            router.push(`/checkout/success?order=${data.orderNumber}`);
-          } else {
-            router.push(`/checkout/failed?order=${data.orderNumber}`);
+            router.push(successUrl);
+          } catch {
+            router.push(failedUrl);
           }
         },
-        modal: { ondismiss: () => router.push(`/checkout/failed?order=${data.orderNumber}`) },
+        modal: { ondismiss: () => router.push(failedUrl) },
         theme: { color: "#2b1c14" },
       });
       razorpay.open();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      setError(err instanceof ApiRequestError || err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setSubmitting(false);
     }

@@ -8,14 +8,12 @@ const TABS = ["General Settings", "Shipping & Delivery", "Payment Gateway", "Not
 
 export default async function AdminSettingsPage() {
   const settings = await safe(() => getStoreSettings(), {
-    id: "singleton",
     storeName: "Zest Chocolates Ltd.",
     domain: null,
     timezone: "Europe/Paris",
     currency: "USD",
     contactEmail: null,
     instagramHandle: null,
-    updatedAt: new Date(),
   });
 
   return (

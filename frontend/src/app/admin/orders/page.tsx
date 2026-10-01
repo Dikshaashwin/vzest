@@ -4,7 +4,7 @@ import { safe } from "@/lib/safe";
 import { formatDate, formatINR } from "@/lib/format";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { ORDER_STATUS_TONE, PAYMENT_STATUS_TONE } from "@/lib/status-tone";
-import type { OrderStatus } from "@prisma/client";
+import type { OrderStatus } from "@/lib/api/types";
 
 export const metadata = { title: "Orders" };
 

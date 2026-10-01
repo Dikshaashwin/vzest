@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getOrderById } from "@/lib/actions/orders";
+import { getOrderByIdForAdmin } from "@/lib/actions/orders";
 import { formatDate, formatINR } from "@/lib/format";
 import { OrderStatusSelect } from "@/components/admin/OrderStatusSelect";
 
@@ -7,7 +7,7 @@ export const metadata = { title: "Order Detail" };
 
 export default async function AdminOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const order = await getOrderById(id);
+  const order = await getOrderByIdForAdmin(id);
 
   if (!order) notFound();
 
@@ -67,20 +67,18 @@ export default async function AdminOrderDetailPage({ params }: { params: Promise
             </div>
           </div>
 
-          {order.address && (
-            <div className="rounded-2xl border border-cocoa-100 bg-white p-5">
-              <p className="text-sm font-semibold text-cocoa-800">Shipping Address</p>
-              <div className="mt-3 space-y-1 text-sm text-cocoa-600">
-                <p>{order.address.fullName}</p>
-                <p>{order.address.line1}</p>
-                {order.address.line2 && <p>{order.address.line2}</p>}
-                <p>
-                  {order.address.city}, {order.address.state} {order.address.pincode}
-                </p>
-                <p>{order.address.phone}</p>
-              </div>
+          <div className="rounded-2xl border border-cocoa-100 bg-white p-5">
+            <p className="text-sm font-semibold text-cocoa-800">Shipping Address</p>
+            <div className="mt-3 space-y-1 text-sm text-cocoa-600">
+              <p>{order.shippingFullName}</p>
+              <p>{order.shippingLine1}</p>
+              {order.shippingLine2 && <p>{order.shippingLine2}</p>}
+              <p>
+                {order.shippingCity}, {order.shippingState} {order.shippingPincode}
+              </p>
+              <p>{order.shippingPhone}</p>
             </div>
-          )}
+          </div>
 
           <div className="rounded-2xl border border-cocoa-100 bg-white p-5">
             <p className="text-sm font-semibold text-cocoa-800">Payment</p>

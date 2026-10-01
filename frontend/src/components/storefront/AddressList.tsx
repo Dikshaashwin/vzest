@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { deleteAddress, setDefaultAddress } from "@/lib/actions/addresses";
 import { AddressForm } from "@/components/storefront/AddressForm";
-import type { Address } from "@prisma/client";
+import type { Address } from "@/lib/api/types";
 
 export function AddressList({ addresses }: { addresses: Address[] }) {
   const [adding, setAdding] = useState(false);

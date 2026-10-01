@@ -1,23 +1,33 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import { apiServer } from "@/lib/api/server";
 import { stockAdjustmentSchema } from "@/lib/validators";
 import { revalidatePath } from "next/cache";
-import type { InventoryReason } from "@prisma/client";
+
+export type InventoryVariant = {
+  id: string;
+  sku: string;
+  label: string;
+  price: string;
+  stock: number;
+  lowStockAt: number;
+  product: { id: string; name: string };
+};
+
+export type InventoryTransaction = {
+  id: string;
+  change: number;
+  reason: string;
+  note: string | null;
+  createdAt: string;
+};
 
 export async function listInventory() {
-  return prisma.productVariant.findMany({
-    include: { product: true },
-    orderBy: { stock: "asc" },
-  });
+  return apiServer.get<InventoryVariant[]>("/admin/inventory");
 }
 
 export async function getInventoryHistory(variantId: string) {
-  return prisma.inventoryTransaction.findMany({
-    where: { variantId },
-    orderBy: { createdAt: "desc" },
-    take: 50,
-  });
+  return apiServer.get<InventoryTransaction[]>(`/admin/inventory/${variantId}/history`);
 }
 
 export async function adjustStock(input: {
@@ -27,44 +37,6 @@ export async function adjustStock(input: {
   note?: string;
 }) {
   const data = stockAdjustmentSchema.parse(input);
-
-  await prisma.$transaction([
-    prisma.productVariant.update({
-      where: { id: data.variantId },
-      data: { stock: { increment: data.change } },
-    }),
-    prisma.inventoryTransaction.create({
-      data: {
-        variantId: data.variantId,
-        change: data.change,
-        reason: data.reason,
-        note: data.note,
-      },
-    }),
-  ]);
-
+  await apiServer.post("/admin/inventory/adjust", data);
   revalidatePath("/admin/inventory");
-}
-
-/** Called from order fulfillment/cancellation flows — keeps stock and the audit log consistent. */
-export async function recordInventoryMovement(params: {
-  variantId: string;
-  change: number;
-  reason: InventoryReason;
-  orderId?: string;
-}) {
-  await prisma.$transaction([
-    prisma.productVariant.update({
-      where: { id: params.variantId },
-      data: { stock: { increment: params.change } },
-    }),
-    prisma.inventoryTransaction.create({
-      data: {
-        variantId: params.variantId,
-        change: params.change,
-        reason: params.reason,
-        orderId: params.orderId,
-      },
-    }),
-  ]);
 }

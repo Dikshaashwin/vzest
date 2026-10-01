@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { createClient } from "@/lib/supabase/client";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -25,9 +25,9 @@ function LoginForm() {
     setLoading(true);
     setError(null);
 
-    const result = await signIn("credentials", { email, password, redirect: false });
+    const { error: signInError } = await createClient().auth.signInWithPassword({ email, password });
 
-    if (result?.error) {
+    if (signInError) {
       setError("Invalid email or password.");
       setLoading(false);
       return;

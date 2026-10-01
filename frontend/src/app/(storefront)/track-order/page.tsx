@@ -3,15 +3,8 @@
 import { useState } from "react";
 import { formatDate, formatINR } from "@/lib/format";
 import { Button } from "@/components/ui/Button";
-
-type TrackedOrder = {
-  orderNumber: string;
-  status: string;
-  total: string;
-  createdAt: string;
-  items: { name: string; variantLabel: string; quantity: number }[];
-  shipment: { awbCode: string | null; courierName: string | null; status: string } | null;
-};
+import { trackOrder } from "@/lib/actions/orders";
+import type { Order as TrackedOrder } from "@/lib/api/types";
 
 export default function TrackOrderPage() {
   const [orderNumber, setOrderNumber] = useState("");
@@ -26,14 +19,9 @@ export default function TrackOrderPage() {
     setError(null);
     setOrder(null);
     try {
-      const res = await fetch("/api/orders/track", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderNumber, email }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Order not found.");
-      setOrder(data.order);
+      const result = await trackOrder(orderNumber, email);
+      if (!result) throw new Error("No matching order found.");
+      setOrder(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {

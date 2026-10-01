@@ -1,48 +1,55 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import { addressSchema } from "@/lib/validators";
 import { revalidatePath } from "next/cache";
+import { addressSchema } from "@/lib/validators";
+import { apiServer, ApiRequestError } from "@/lib/api/server";
+import type { Address } from "@/lib/api/types";
 import { z } from "zod";
 
+function requireSignedIn(err: unknown): never {
+  if (err instanceof ApiRequestError && err.status === 401) {
+    throw new Error("You must be signed in to do that.");
+  }
+  throw err;
+}
+
 export async function getMyAddresses() {
-  const session = await auth();
-  if (!session?.user?.id) return [];
-  return prisma.address.findMany({ where: { userId: session.user.id }, orderBy: { isDefault: "desc" } });
+  try {
+    return await apiServer.get<Address[]>("/account/addresses");
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 401) return [];
+    throw err;
+  }
 }
 
 export async function createAddress(input: z.infer<typeof addressSchema> & { isDefault?: boolean }) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("You must be signed in to save an address.");
-
   const data = addressSchema.parse(input);
-
-  if (input.isDefault) {
-    await prisma.address.updateMany({ where: { userId: session.user.id }, data: { isDefault: false } });
+  try {
+    const address = await apiServer.post<Address>(
+      `/account/addresses?is_default=${input.isDefault ?? false}`,
+      data,
+    );
+    revalidatePath("/account/addresses");
+    return address;
+  } catch (err) {
+    return requireSignedIn(err);
   }
-
-  const address = await prisma.address.create({
-    data: { ...data, userId: session.user.id, isDefault: input.isDefault ?? false },
-  });
-
-  revalidatePath("/account/addresses");
-  return address;
 }
 
 export async function deleteAddress(id: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("You must be signed in.");
-  await prisma.address.deleteMany({ where: { id, userId: session.user.id } });
+  try {
+    await apiServer.delete(`/account/addresses/${id}`);
+  } catch (err) {
+    return requireSignedIn(err);
+  }
   revalidatePath("/account/addresses");
 }
 
 export async function setDefaultAddress(id: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("You must be signed in.");
-  await prisma.$transaction([
-    prisma.address.updateMany({ where: { userId: session.user.id }, data: { isDefault: false } }),
-    prisma.address.update({ where: { id }, data: { isDefault: true } }),
-  ]);
+  try {
+    await apiServer.patch(`/account/addresses/${id}/default`);
+  } catch (err) {
+    return requireSignedIn(err);
+  }
   revalidatePath("/account/addresses");
 }

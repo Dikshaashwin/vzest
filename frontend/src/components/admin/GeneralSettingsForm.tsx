@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Button } from "@/components/ui/Button";
 import { updateStoreSettings } from "@/lib/actions/settings";
-import type { StoreSettings } from "@prisma/client";
+import type { StoreSettings } from "@/lib/actions/settings";
 
 const CURRENCIES = ["USD", "INR", "EUR", "GBP"];
 

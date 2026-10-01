@@ -3,8 +3,7 @@
 import { useState, useTransition } from "react";
 import { ArrowUp, ArrowDown } from "lucide-react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
-import { toggleSectionVisibility, moveSectionPosition } from "@/lib/actions/homepage";
-import type { HomepageSection } from "@prisma/client";
+import { toggleSectionVisibility, moveSectionPosition, type HomepageSection } from "@/lib/actions/homepage";
 
 export function HomepageSectionRow({
   section,

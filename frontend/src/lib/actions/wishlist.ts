@@ -1,29 +1,39 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { apiServer, ApiRequestError } from "@/lib/api/server";
+import type { WishlistItem } from "@/lib/api/types";
+
+export async function getWishlist() {
+  try {
+    return await apiServer.get<WishlistItem[]>("/account/wishlist");
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 401) return [];
+    throw err;
+  }
+}
 
 export async function toggleWishlist(productId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("You must be signed in to save items.");
-
-  const existing = await prisma.wishlistItem.findUnique({
-    where: { userId_productId: { userId: session.user.id, productId } },
-  });
-
-  if (existing) {
-    await prisma.wishlistItem.delete({ where: { id: existing.id } });
-  } else {
-    await prisma.wishlistItem.create({ data: { userId: session.user.id, productId } });
+  try {
+    const result = await apiServer.post<{ wishlisted: boolean }>(`/account/wishlist/${productId}/toggle`);
+    revalidatePath("/account/wishlist");
+    return result;
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 401) {
+      throw new Error("You must be signed in to save items.");
+    }
+    throw err;
   }
-
-  revalidatePath("/account/wishlist");
 }
 
 export async function removeFromWishlist(wishlistItemId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("You must be signed in.");
-  await prisma.wishlistItem.deleteMany({ where: { id: wishlistItemId, userId: session.user.id } });
+  try {
+    await apiServer.delete(`/account/wishlist/${wishlistItemId}`);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 401) {
+      throw new Error("You must be signed in.");
+    }
+    throw err;
+  }
   revalidatePath("/account/wishlist");
 }

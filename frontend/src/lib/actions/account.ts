@@ -1,10 +1,10 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { auth } from "@/auth";
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { createClient } from "@/lib/supabase/server";
+import { apiServer, ApiRequestError } from "@/lib/api/server";
+import type { Address, Me, Order, WishlistItem } from "@/lib/api/types";
 
 const registerSchema = z.object({
   firstName: z.string().min(1),
@@ -15,35 +15,43 @@ const registerSchema = z.object({
 
 export async function registerCustomer(input: z.infer<typeof registerSchema>) {
   const data = registerSchema.parse(input);
+  const supabase = await createClient();
 
-  const existing = await prisma.user.findUnique({ where: { email: data.email } });
-  if (existing) throw new Error("An account with this email already exists.");
-
-  const passwordHash = await bcrypt.hash(data.password, 10);
-  await prisma.user.create({
-    data: {
-      email: data.email,
-      name: `${data.firstName} ${data.lastName}`.trim(),
-      passwordHash,
-      role: "CUSTOMER",
-    },
+  const { data: signUpData, error } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+    options: { data: { name: `${data.firstName} ${data.lastName}`.trim() } },
   });
+
+  if (error) {
+    if (error.message.toLowerCase().includes("already registered")) {
+      throw new Error("An account with this email already exists.");
+    }
+    throw new Error(error.message);
+  }
+
+  return { emailConfirmationRequired: !signUpData.session };
 }
 
-export async function getAccountSummary() {
-  const session = await auth();
-  if (!session?.user?.id) return null;
+export type AccountSummary = Me & {
+  orders: Order[];
+  addresses: Address[];
+  wishlist: WishlistItem[];
+};
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      orders: { orderBy: { createdAt: "desc" }, include: { items: true } },
-      addresses: { orderBy: { isDefault: "desc" } },
-      wishlist: true,
-    },
-  });
-
-  return user;
+export async function getAccountSummary(): Promise<AccountSummary | null> {
+  try {
+    const [me, orders, addresses, wishlist] = await Promise.all([
+      apiServer.get<Me>("/me"),
+      apiServer.get<Order[]>("/account/orders"),
+      apiServer.get<Address[]>("/account/addresses"),
+      apiServer.get<WishlistItem[]>("/account/wishlist"),
+    ]);
+    return { ...me, orders, addresses, wishlist };
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 401) return null;
+    throw err;
+  }
 }
 
 const profileSchema = z.object({
@@ -52,30 +60,18 @@ const profileSchema = z.object({
 });
 
 export async function updateProfile(input: z.infer<typeof profileSchema>) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("You must be signed in.");
-
   const data = profileSchema.parse(input);
-  await prisma.user.update({ where: { id: session.user.id }, data });
+  await apiServer.patch("/me", data);
   revalidatePath("/account/settings");
 }
 
 const passwordSchema = z.object({
-  currentPassword: z.string().min(1),
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
 
-export async function changePassword(input: z.infer<typeof passwordSchema>) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("You must be signed in.");
-
+export async function changePassword(input: { newPassword: string }) {
   const data = passwordSchema.parse(input);
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (!user?.passwordHash) throw new Error("No password set for this account.");
-
-  const valid = await bcrypt.compare(data.currentPassword, user.passwordHash);
-  if (!valid) throw new Error("Current password is incorrect.");
-
-  const passwordHash = await bcrypt.hash(data.newPassword, 10);
-  await prisma.user.update({ where: { id: session.user.id }, data: { passwordHash } });
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ password: data.newPassword });
+  if (error) throw new Error(error.message);
 }

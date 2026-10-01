@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import clsx from "clsx";
 
 const NAV = [
@@ -15,6 +15,13 @@ const NAV = [
 
 export function AccountSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await createClient().auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <aside>
@@ -36,7 +43,7 @@ export function AccountSidebar() {
           );
         })}
         <button
-          onClick={() => signOut({ callbackUrl: "/" })}
+          onClick={handleSignOut}
           className="block w-full rounded px-3 py-2 text-left text-sm font-medium text-cocoa-600 hover:bg-cocoa-50"
         >
           Log Out

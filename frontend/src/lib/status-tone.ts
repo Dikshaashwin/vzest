@@ -1,5 +1,5 @@
 import type { BadgeTone } from "@/components/ui/StatusBadge";
-import type { OrderStatus, PaymentStatus } from "@prisma/client";
+import type { OrderStatus, PaymentStatus } from "@/lib/api/types";
 
 export const ORDER_STATUS_TONE: Record<OrderStatus, BadgeTone> = {
   DELIVERED: "success",

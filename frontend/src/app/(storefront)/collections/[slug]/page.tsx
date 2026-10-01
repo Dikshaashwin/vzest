@@ -1,13 +1,13 @@
 import { getActiveProducts } from "@/lib/actions/products";
+import { getCollectionBySlug } from "@/lib/actions/collections";
 import { safe } from "@/lib/safe";
 import { ProductGrid } from "@/components/storefront/ProductGrid";
-import { prisma } from "@/lib/prisma";
 
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
 
   const [collection, { products }] = await Promise.all([
-    safe(() => prisma.collection.findUnique({ where: { slug } }), null),
+    safe(() => getCollectionBySlug(slug), null),
     safe(() => getActiveProducts({ collectionSlug: slug, perPage: 24 }), { products: [], total: 0, totalPages: 1 }),
   ]);
 

@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { updateOrderStatus } from "@/lib/actions/orders";
-import type { OrderStatus } from "@prisma/client";
+import type { OrderStatus } from "@/lib/api/types";
 
 const STATUSES: OrderStatus[] = [
   "PAYMENT_PENDING",

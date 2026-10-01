@@ -1,13 +1,20 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { apiServer } from "@/lib/api/server";
+
+export type StoreSettings = {
+  storeName: string;
+  domain: string | null;
+  timezone: string;
+  currency: string;
+  contactEmail: string | null;
+  instagramHandle: string | null;
+};
 
 export async function getStoreSettings() {
-  const existing = await prisma.storeSettings.findUnique({ where: { id: "singleton" } });
-  if (existing) return existing;
-  return prisma.storeSettings.create({ data: { id: "singleton" } });
+  return apiServer.get<StoreSettings>("/admin/settings");
 }
 
 const settingsSchema = z.object({
@@ -21,10 +28,6 @@ const settingsSchema = z.object({
 
 export async function updateStoreSettings(input: z.infer<typeof settingsSchema>) {
   const data = settingsSchema.parse(input);
-  await prisma.storeSettings.upsert({
-    where: { id: "singleton" },
-    update: data,
-    create: { id: "singleton", ...data },
-  });
+  await apiServer.put("/admin/settings", data);
   revalidatePath("/admin/settings");
 }

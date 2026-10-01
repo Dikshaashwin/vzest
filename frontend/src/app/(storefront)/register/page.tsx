@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { registerCustomer } from "@/lib/actions/account";
 import { Button } from "@/components/ui/Button";
@@ -14,6 +13,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "" });
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const update = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -33,10 +33,14 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
+    setError(null);
+    setInfo(null);
     try {
-      await registerCustomer(form);
-      const result = await signIn("credentials", { email: form.email, password: form.password, redirect: false });
-      if (result?.error) throw new Error("Account created — please sign in.");
+      const result = await registerCustomer(form);
+      if (result.emailConfirmationRequired) {
+        setInfo("Account created — check your email to confirm it, then sign in.");
+        return;
+      }
       router.push("/account");
       router.refresh();
     } catch (err) {
@@ -79,6 +83,7 @@ export default function RegisterPage() {
           </div>
 
           {error && <p className="text-sm text-danger-600">{error}</p>}
+          {info && <p className="text-sm text-success-600">{info}</p>}
 
           <Button type="submit" className="w-full" size="lg" disabled={loading}>
             {loading ? "Creating account..." : "Create Account"}

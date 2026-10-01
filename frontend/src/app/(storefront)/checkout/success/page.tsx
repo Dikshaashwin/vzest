@@ -1,16 +1,16 @@
 import { CheckCircle } from "lucide-react";
 import { LinkButton } from "@/components/ui/Button";
-import { getOrderByNumber } from "@/lib/actions/orders";
+import { trackOrder } from "@/lib/actions/orders";
 import { safe } from "@/lib/safe";
 import { formatINR } from "@/lib/format";
 
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: Promise<{ order?: string }>;
+  searchParams: Promise<{ order?: string; email?: string }>;
 }) {
-  const { order: orderNumber } = await searchParams;
-  const order = orderNumber ? await safe(() => getOrderByNumber(orderNumber), null) : null;
+  const { order: orderNumber, email } = await searchParams;
+  const order = orderNumber && email ? await safe(() => trackOrder(orderNumber, email), null) : null;
 
   return (
     <div className="mx-auto max-w-lg px-4 py-20 text-center">

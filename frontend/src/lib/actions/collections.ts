@@ -1,8 +1,9 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { apiServer } from "@/lib/api/server";
+import type { Collection, CollectionAdmin } from "@/lib/api/types";
 
 const collectionSchema = z.object({
   name: z.string().min(2),
@@ -14,34 +15,57 @@ const collectionSchema = z.object({
 
 export type CollectionInput = z.infer<typeof collectionSchema>;
 
+export async function getCollections(opts: { featuredOnly?: boolean } = {}) {
+  const qs = opts.featuredOnly ? "?featured_only=true" : "";
+  return apiServer.get<Collection[]>(`/collections${qs}`);
+}
+
+export async function getCollectionBySlug(slug: string) {
+  return apiServer.get<Collection>(`/collections/${encodeURIComponent(slug)}`);
+}
+
 export async function listCollectionsForAdmin() {
-  return prisma.collection.findMany({
-    include: { _count: { select: { products: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const collections = await apiServer.get<CollectionAdmin[]>("/admin/collections");
+  return collections.map((c) => ({ ...c, _count: { products: c.productCount } }));
+}
+
+function toCollectionInput(data: CollectionInput) {
+  return { ...data, imageUrl: data.imageUrl || null };
 }
 
 export async function createCollection(input: CollectionInput) {
   const data = collectionSchema.parse(input);
-  await prisma.collection.create({ data: { ...data, imageUrl: data.imageUrl || undefined } });
+  await apiServer.post("/admin/collections", toCollectionInput(data));
   revalidatePath("/admin/collections");
   revalidatePath("/collections");
 }
 
 export async function updateCollection(id: string, input: CollectionInput) {
   const data = collectionSchema.parse(input);
-  await prisma.collection.update({ where: { id }, data: { ...data, imageUrl: data.imageUrl || undefined } });
+  await apiServer.put(`/admin/collections/${id}`, toCollectionInput(data));
   revalidatePath("/admin/collections");
   revalidatePath("/collections");
 }
 
 export async function deleteCollection(id: string) {
-  await prisma.collection.delete({ where: { id } });
+  await apiServer.delete(`/admin/collections/${id}`);
   revalidatePath("/admin/collections");
   revalidatePath("/collections");
 }
 
 export async function toggleCollectionFeatured(id: string, isFeatured: boolean) {
-  await prisma.collection.update({ where: { id }, data: { isFeatured } });
+  // The backend has no single-collection admin GET, and PUT replaces the full
+  // record — so we pull the current fields from the list first.
+  const collections = await apiServer.get<CollectionAdmin[]>("/admin/collections");
+  const collection = collections.find((c) => c.id === id);
+  if (!collection) throw new Error("Collection not found");
+
+  await apiServer.put(`/admin/collections/${id}`, {
+    name: collection.name,
+    slug: collection.slug,
+    description: collection.description ?? undefined,
+    imageUrl: collection.imageUrl,
+    isFeatured,
+  });
   revalidatePath("/admin/collections");
 }
