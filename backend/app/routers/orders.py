@@ -112,7 +112,8 @@ def verify_payment(payload: VerifyPaymentInput, db: Session = Depends(get_db)):
     if not order:
         raise HTTPException(status_code=404, detail="Order not found.")
 
-    _mark_order_paid(db, order, payload.razorpay_order_id, payload.razorpay_payment_id, payload.razorpay_signature)
+    if order.payment and order.payment.status != PaymentStatus.PAID:
+        _mark_order_paid(db, order, payload.razorpay_order_id, payload.razorpay_payment_id, payload.razorpay_signature)
     return {"success": True, "order_number": order.order_number}
 
 

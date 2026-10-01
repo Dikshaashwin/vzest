@@ -22,6 +22,10 @@ class Settings(BaseSettings):
 
     frontend_url: str = "http://localhost:3000"
 
+    @property
+    def frontend_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.frontend_url.split(",") if origin.strip()]
+
 
 @lru_cache
 def get_settings() -> Settings:
