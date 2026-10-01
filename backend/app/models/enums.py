@@ -1,0 +1,49 @@
+import enum
+
+
+class Role(str, enum.Enum):
+    ADMIN = "ADMIN"
+    STAFF = "STAFF"
+    CUSTOMER = "CUSTOMER"
+
+
+class InventoryReason(str, enum.Enum):
+    RESTOCK = "RESTOCK"
+    ORDER_PLACED = "ORDER_PLACED"
+    ORDER_CANCELLED = "ORDER_CANCELLED"
+    RETURN_RESTOCK = "RETURN_RESTOCK"
+    DAMAGED = "DAMAGED"
+    MANUAL_ADJUSTMENT = "MANUAL_ADJUSTMENT"
+
+
+class OrderStatus(str, enum.Enum):
+    PAYMENT_PENDING = "PAYMENT_PENDING"
+    PAID = "PAID"
+    CONFIRMED = "CONFIRMED"
+    PROCESSING = "PROCESSING"
+    PACKED = "PACKED"
+    READY_TO_SHIP = "READY_TO_SHIP"
+    SHIPPED = "SHIPPED"
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY"
+    DELIVERED = "DELIVERED"
+    CANCELLED = "CANCELLED"
+    RETURNED = "RETURNED"
+    REFUNDED = "REFUNDED"
+
+
+class PaymentStatus(str, enum.Enum):
+    PENDING = "PENDING"
+    PAID = "PAID"
+    FAILED = "FAILED"
+    REFUNDED = "REFUNDED"
+
+
+class CouponType(str, enum.Enum):
+    PERCENTAGE = "PERCENTAGE"
+    FIXED = "FIXED"
+
+
+class LeadType(str, enum.Enum):
+    CONTACT = "CONTACT"
+    CORPORATE_GIFTING = "CORPORATE_GIFTING"
+    NEWSLETTER = "NEWSLETTER"
